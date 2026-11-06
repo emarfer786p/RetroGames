@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroGames - Spring Boot + Docker</title>
+    <style>
+        :root { --bg: #121212; --card: #1e1e2e; --accent: #6db33f; --text: #f5f5f5; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); max-width: 750px; margin: 0 auto; padding: 2rem; }
+        h1 { color: var(--accent); margin-bottom: 0.2rem; }
+        .subtitle { color: #888; margin-top: 0; margin-bottom: 2rem; }
+        .card { background: var(--card); border: 2px solid var(--accent); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(109,179,63,0.12); }
+        .badge { background: var(--accent); color: #000; padding: 0.25rem 0.6rem; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
+        button { background: var(--accent); color: #000; border: none; padding: 0.7rem 1.2rem; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+        button:hover { opacity: 0.85; }
+        form { display: grid; gap: 0.8rem; margin-top: 1rem; }
+        input, textarea { padding: 0.65rem; border-radius: 6px; border: 1px solid #444; background: #2a2a3c; color: #fff; font-family: inherit; }
+        .footer { font-size: 0.85rem; color: #888; display: flex; justify-content: space-between; margin-top: 2rem; border-top: 1px solid #333; padding-top: 1rem; }
+        a { color: var(--accent); }
+    </style>
+</head>
+<body>
+<h1>🕹️ RetroGames Vault (Spring Boot Edition)</h1>
+<p class="subtitle">Laboratorio de despliegue multicontenedor (Spring Boot 3 + JPA + PostgreSQL)</p>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 id="game-title" style="margin: 0;">Cargando desde la API...</h2>
+        <span id="game-badge" class="badge">---</span>
+    </div>
+    <p id="game-fact" style="line-height: 1.5; font-size: 1.05rem; margin: 1.2rem 0;"></p>
+    <button onclick="loadRandomGame()">🎲 Obtener otro dato de la API</button>
+</div>
+
+<div class="card" style="border-color: #444;">
+    <h3 style="margin-top: 0;">➕ Añadir juego (Prueba de persistencia en volumen)</h3>
+    <form onsubmit="addGame(event)">
+        <input type="text" id="title" placeholder="Título (ej. Chrono Trigger)" required>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.8rem;">
+            <input type="text" id="platform" placeholder="Plataforma (ej. SNES)" required>
+            <input type="number" id="year" placeholder="Año (ej. 1995)" required>
+        </div>
+        <textarea id="fact" rows="2" placeholder="Curiosidad o dato técnico..." required></textarea>
+        <button type="submit">Guardar en PostgreSQL</button>
+    </form>
+</div>
+
+<div class="footer">
+    <span>Contenedor Spring ID: <strong id="container-id">...</strong></span>
+    <span>Endpoint JSON crudo: <a href="/api/games" target="_blank">/api/games</a></span>
+</div>
+
+<script>
+    async function loadRandomGame() {
+        const res = await fetch('/api/games/random');
+        const game = await res.json();
+        document.getElementById('game-title').textContent = game.title;
+        document.getElementById('game-badge').textContent = `${game.platform} (${game.year})`;
+        document.getElementById('game-fact').textContent = game.fact;
+    }
+
+    async function addGame(e) {
+        e.preventDefault();
+        const payload = {
+            title: document.getElementById('title').value,
+            platform: document.getElementById('platform').value,
+            year: parseInt(document.getElementById('year').value),
+            fact: document.getElementById('fact').value
+        };
+        await fetch('/api/games', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        e.target.reset();
+        await loadRandomGame();
+        alert('¡Guardado en PostgreSQL mediante Spring Data JPA!');
+    }
+
+    async function checkHealth() {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        document.getElementById('container-id').textContent = data.container_hostname;
+    }
+
+    loadRandomGame();
+    checkHealth();
+</script>
+</body>
+</html>
